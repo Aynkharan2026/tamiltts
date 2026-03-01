@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — TamilTTS Studio{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem">
+    <div>
+      <h1>Your Jobs</h1>
+      <p>All text-to-speech conversions</p>
+    </div>
+    <a href="/new" class="btn btn-primary">+ New Job</a>
+  </div>
+</div>
+
+{% if not jobs %}
+<div class="card" style="text-align:center; padding:3rem">
+  <p style="color:var(--text-muted); font-size:1.1rem">No jobs yet.</p>
+  <a href="/new" class="btn btn-primary" style="margin-top:1.5rem">Create your first job →</a>
+</div>
+{% else %}
+<div class="card" style="padding:0; overflow:hidden">
+  {% for job in jobs %}
+  <a href="/jobs/{{ job.id }}" class="job-row">
+    <div style="flex:1; min-width:0">
+      <div class="job-title">{{ job.title or "Untitled" }}</div>
+      <div class="meta" style="margin-top:0.25rem">
+        {{ job.voice_mode.value.replace('_', ' ').title() }} &middot;
+        {{ job.speed }}x &middot;
+        {{ job.created_at.strftime('%b %d, %Y %H:%M') }}
+      </div>
+    </div>
+    <div style="display:flex; align-items:center; gap:0.75rem; flex-shrink:0">
+      <span class="status-badge status-{{ job.status.value }}">{{ job.status.value }}</span>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

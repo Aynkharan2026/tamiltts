@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}TamilTTS Studio{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Source+Code+Pro:wght@400;600&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0c0c0e;
+      --surface: #141416;
+      --surface2: #1c1c1f;
+      --border: #2a2a2f;
+      --accent: #e8b04b;
+      --accent2: #c94f2c;
+      --text: #e8e4dc;
+      --text-muted: #7a7670;
+      --text-dim: #4a4845;
+      --success: #4caf7d;
+      --danger: #e05252;
+      --warning: #e8b04b;
+      --radius: 4px;
+      --font-display: 'Playfair Display', Georgia, serif;
+      --font-body: 'Lora', Georgia, serif;
+      --font-mono: 'Source Code Pro', monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 15px;
+      line-height: 1.7;
+      min-height: 100vh;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 9999;
+      opacity: 0.4;
+    }
+
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+      position: sticky;
+      top: 0;
+      background: rgba(12,12,14,0.95);
+      backdrop-filter: blur(8px);
+      z-index: 100;
+    }
+
+    .logo {
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: 1.3rem;
+      color: var(--accent);
+      text-decoration: none;
+      letter-spacing: -0.02em;
+    }
+
+    .logo span { color: var(--text-muted); font-weight: 400; }
+
+    nav { display: flex; gap: 1.5rem; align-items: center; }
+
+    nav a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      transition: color 0.2s;
+    }
+
+    nav a:hover { color: var(--text); }
+    nav form { display: inline; }
+
+    nav button {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      padding: 0.35rem 0.75rem;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    nav button:hover { border-color: var(--accent2); color: var(--text); }
+
+    main { max-width: 900px; margin: 0 auto; padding: 3rem 2rem; }
+
+    h1 {
+      font-family: var(--font-display);
+      font-size: 2.2rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1.2;
+      margin-bottom: 0.5rem;
+    }
+
+    h2 { font-family: var(--font-display); font-size: 1.4rem; font-weight: 600; margin-bottom: 1rem; }
+
+    h3 {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .form-group { margin-bottom: 1.5rem; }
+
+    label {
+      display: block;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    input[type="email"],
+    input[type="password"],
+    input[type="text"],
+    input[type="number"],
+    select,
+    textarea {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.65rem 0.85rem;
+      border-radius: var(--radius);
+      font-family: var(--font-body);
+      font-size: 0.95rem;
+      transition: border-color 0.2s;
+      outline: none;
+    }
+
+    input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+
+    textarea { min-height: 220px; resize: vertical; line-height: 1.6; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.65rem 1.5rem;
+      border-radius: var(--radius);
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      border: none;
+      text-decoration: none;
+      transition: all 0.2s;
+      font-weight: 600;
+    }
+
+    .btn-primary { background: var(--accent); color: #0c0c0e; }
+    .btn-primary:hover { background: #f0bc5a; transform: translateY(-1px); }
+    .btn-danger { background: transparent; border: 1px solid var(--danger); color: var(--danger); }
+    .btn-danger:hover { background: var(--danger); color: white; }
+    .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text-muted); }
+    .btn-ghost:hover { border-color: var(--text-muted); color: var(--text); }
+
+    .status-badge {
+      display: inline-block;
+      padding: 0.2rem 0.6rem;
+      border-radius: 2px;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    .status-queued    { background: #2a2a2f; color: var(--text-muted); }
+    .status-processing { background: rgba(232,176,75,0.15); color: var(--accent); animation: pulse 2s infinite; }
+    .status-done      { background: rgba(76,175,125,0.15); color: var(--success); }
+    .status-failed    { background: rgba(224,82,82,0.15); color: var(--danger); }
+
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+
+    .alert { padding: 0.85rem 1rem; border-radius: var(--radius); font-size: 0.9rem; margin-bottom: 1.5rem; }
+    .alert-error   { background: rgba(224,82,82,0.1); border: 1px solid rgba(224,82,82,0.3); color: #f08080; }
+    .alert-success { background: rgba(76,175,125,0.1); border: 1px solid rgba(76,175,125,0.3); color: #80d4aa; }
+
+    .divider { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+
+    .meta { font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-muted); letter-spacing: 0.03em; }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+    @media (max-width: 600px) {
+      main { padding: 1.5rem 1rem; }
+      h1 { font-size: 1.6rem; }
+      .grid-2 { grid-template-columns: 1fr; }
+      header { padding: 0 1rem; }
+    }
+
+    .range-wrapper { display: flex; align-items: center; gap: 1rem; }
+
+    input[type="range"] { flex: 1; accent-color: var(--accent); background: transparent; border: none; padding: 0; }
+
+    .range-value { font-family: var(--font-mono); font-size: 0.85rem; color: var(--accent); min-width: 3rem; text-align: right; }
+
+    .voice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+
+    .voice-option input[type="radio"] { display: none; }
+
+    .voice-option label {
+      display: block;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-transform: none;
+      letter-spacing: 0;
+      font-family: var(--font-body);
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    .voice-option input:checked + label { border-color: var(--accent); background: rgba(232,176,75,0.07); color: var(--text); }
+    .voice-option label:hover { border-color: var(--text-dim); color: var(--text); }
+
+    .voice-label-title {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+      display: block;
+      margin-bottom: 0.2rem;
+    }
+
+    .job-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem;
+      border-bottom: 1px solid var(--border);
+      gap: 1rem;
+      text-decoration: none;
+      color: inherit;
+      transition: background 0.15s;
+    }
+
+    .job-row:last-child { border-bottom: none; }
+    .job-row:hover { background: var(--surface2); }
+    .job-title { font-family: var(--font-display); font-size: 1rem; font-weight: 600; color: var(--text); }
+
+    .token-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.75rem 0;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+
+    .token-url { font-family: var(--font-mono); font-size: 0.75rem; color: var(--accent); word-break: break-all; flex: 1; }
+
+    audio { width: 100%; margin: 1rem 0; accent-color: var(--accent); }
+
+    .page-header { margin-bottom: 2.5rem; }
+    .page-header p { color: var(--text-muted); margin-top: 0.5rem; }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <header>
+    <a href="/dashboard" class="logo">Tamil<span>TTS</span> Studio</a>
+    <nav>
+      {% if user is defined and user %}
+        <a href="/dashboard">Dashboard</a>
+        <a href="/new">New Job</a>
+        <form action="/logout" method="post">
+          <button type="submit">Logout</button>
+        </form>
+      {% endif %}
+    </nav>
+  </header>
+  <main>
+    {% block content %}
+    {% if error is defined and error %}
+      <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+    {% endblock %}
+  </main>
+</body>
+</html>

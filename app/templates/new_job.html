@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}New Job — TamilTTS Studio{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>New Job</h1>
+  <p>Paste Tamil text (with any embedded English) to synthesize speech</p>
+</div>
+
+{% if error is defined and error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<form action="/jobs" method="post" enctype="multipart/form-data">
+
+  <div class="card">
+    <h3>Job Details</h3>
+    <div class="form-group">
+      <label for="title">Title (optional)</label>
+      <input type="text" id="title" name="title" placeholder="e.g. Tamil Essay Chapter 1">
+    </div>
+    <div class="form-group">
+      <label for="text">Tamil Text</label>
+      <textarea id="text" name="text" placeholder="இங்கே உங்கள் தமிழ் கட்டுரையை ஒட்டுங்கள்...&#10;You can include English words like this too."></textarea>
+      <div class="meta" style="margin-top:0.4rem">Max 100,000 characters · Supports Tamil + English</div>
+    </div>
+    <div class="form-group" style="margin-bottom:0">
+      <label for="file">Or upload a file (.txt or .docx)</label>
+      <input type="file" id="file" name="file" accept=".txt,.docx"
+        style="background:var(--surface2); border:1px solid var(--border); color:var(--text-muted); padding:0.5rem; border-radius:var(--radius); width:100%">
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Voice Mode</h3>
+    <div class="voice-grid">
+      <div class="voice-option">
+        <input type="radio" id="vm_mn" name="voice_mode" value="male_newsreader" checked>
+        <label for="vm_mn">
+          <span class="voice-label-title">Male · Newsreader</span>
+          Formal, neutral tone. Best for essays and articles.
+        </label>
+      </div>
+      <div class="voice-option">
+        <input type="radio" id="vm_mc" name="voice_mode" value="male_conversational">
+        <label for="vm_mc">
+          <span class="voice-label-title">Male · Conversational</span>
+          Natural, slightly relaxed delivery.
+        </label>
+      </div>
+      <div class="voice-option">
+        <input type="radio" id="vm_fn" name="voice_mode" value="female_newsreader">
+        <label for="vm_fn">
+          <span class="voice-label-title">Female · Newsreader</span>
+          Clear, professional female voice.
+        </label>
+      </div>
+      <div class="voice-option">
+        <input type="radio" id="vm_fc" name="voice_mode" value="female_conversational">
+        <label for="vm_fc">
+          <span class="voice-label-title">Female · Conversational</span>
+          Warm, approachable delivery.
+        </label>
+      </div>
+    </div>
+    <div class="meta" style="margin-top:1rem; padding:0.75rem; background:var(--surface2); border-radius:var(--radius)">
+      &#9432; Newsreader style uses Google WaveNet voices (higher quality). Conversational uses Standard voices.
+      True stylistic differentiation is approximated — Google TTS does not offer separate newsreader/conversational modes for ta-IN.
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Speed</h3>
+    <div class="range-wrapper">
+      <span class="meta">0.9&times;</span>
+      <input type="range" id="speed" name="speed"
+        min="0.9" max="1.1" step="0.05" value="1.0"
+        oninput="document.getElementById('speed-val').textContent = parseFloat(this.value).toFixed(2) + '&times;'">
+      <span class="meta">1.1&times;</span>
+      <span class="range-value" id="speed-val">1.00&times;</span>
+    </div>
+  </div>
+
+  <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center; padding:0.9rem">
+    Generate Audio &rarr;
+  </button>
+</form>
+{% endblock %}

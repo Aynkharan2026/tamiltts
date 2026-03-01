@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Login — TamilTTS Studio{% endblock %}
+
+{% block content %}
+<style>
+  .login-wrap { max-width: 400px; margin: 4rem auto 0; }
+  .login-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 1rem;
+  }
+  .login-wrap h1 { margin-bottom: 2rem; }
+</style>
+
+<div class="login-wrap">
+  <p class="login-eyebrow">Welcome</p>
+  <h1>Sign in to<br>your studio</h1>
+
+  {% if error %}
+  <div class="alert alert-error">{{ error }}</div>
+  {% endif %}
+
+  <form action="/login" method="post" class="card">
+    <div class="form-group">
+      <label for="email">Email address</label>
+      <input type="email" id="email" name="email" required autocomplete="email" autofocus>
+    </div>
+    <div class="form-group" style="margin-bottom:0">
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" required autocomplete="current-password">
+    </div>
+    <div style="margin-top:1.5rem">
+      <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center">
+        Sign in →
+      </button>
+    </div>
+  </form>
+</div>
+{% endblock %}

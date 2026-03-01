@@ -1,0 +1,31 @@
+[Unit]
+Description=TamilTTS Studio — Web (FastAPI/Uvicorn)
+After=network.target postgresql.service redis.service
+Wants=postgresql.service redis.service
+
+[Service]
+Type=simple
+User=tamiltts
+Group=tamiltts
+WorkingDirectory=/opt/tamiltts
+EnvironmentFile=/etc/tamiltts/.env
+ExecStart=/opt/tamiltts/venv/bin/uvicorn app.main:app \
+    --host 127.0.0.1 \
+    --port 8000 \
+    --workers 2 \
+    --log-level info \
+    --access-log
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=tamiltts-web
+
+# Hardening
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/tamiltts /etc/tamiltts
+
+[Install]
+WantedBy=multi-user.target

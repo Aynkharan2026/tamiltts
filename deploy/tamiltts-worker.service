@@ -1,0 +1,31 @@
+[Unit]
+Description=TamilTTS Studio — Celery Worker
+After=network.target postgresql.service redis.service
+Wants=postgresql.service redis.service
+
+[Service]
+Type=simple
+User=tamiltts
+Group=tamiltts
+WorkingDirectory=/opt/tamiltts
+EnvironmentFile=/etc/tamiltts/.env
+ExecStart=/opt/tamiltts/venv/bin/celery \
+    -A app.worker.celery_app worker \
+    --loglevel=info \
+    --concurrency=2 \
+    --max-tasks-per-child=50 \
+    -n tamiltts-worker@%%h
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=tamiltts-worker
+
+# Hardening
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/tamiltts /etc/tamiltts /tmp
+
+[Install]
+WantedBy=multi-user.target

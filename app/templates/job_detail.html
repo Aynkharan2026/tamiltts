@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}Job — TamilTTS Studio{% endblock %}
+
+{% block extra_head %}
+{% if job.status.value in ['queued', 'processing'] %}
+<meta http-equiv="refresh" content="5">
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div style="display:flex; align-items:center; gap:1rem; margin-bottom:0.5rem; flex-wrap:wrap">
+  <a href="/dashboard" class="meta" style="color:var(--text-dim)">&larr; Dashboard</a>
+</div>
+
+<div class="page-header">
+  <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; flex-wrap:wrap">
+    <div>
+      <h1>{{ job.title or "Untitled Job" }}</h1>
+      <div class="meta" style="margin-top:0.5rem">
+        {{ job.voice_mode.value.replace('_', ' ').title() }} &middot;
+        {{ job.speed }}&times; speed &middot;
+        Created {{ job.created_at.strftime('%b %d, %Y at %H:%M') }}
+      </div>
+    </div>
+    <span class="status-badge status-{{ job.status.value }}" style="font-size:0.8rem; padding:0.3rem 0.9rem">
+      {{ job.status.value }}
+    </span>
+  </div>
+</div>
+
+{% if job.status.value == 'queued' %}
+<div class="alert" style="background:rgba(232,176,75,0.08); border:1px solid rgba(232,176,75,0.2); color:var(--accent)">
+  &#8987; Your job is queued. This page refreshes automatically every 5 seconds.
+</div>
+{% elif job.status.value == 'processing' %}
+<div class="alert" style="background:rgba(232,176,75,0.08); border:1px solid rgba(232,176,75,0.2); color:var(--accent)">
+  &#127897; Synthesizing audio&hellip; please wait. Refreshing every 5 seconds.
+</div>
+{% elif job.status.value == 'failed' %}
+<div class="alert alert-error">
+  &#10060; Job failed: {{ job.error_message or "Unknown error" }}
+</div>
+{% endif %}
+
+{% if job.status.value == 'done' %}
+<div class="card">
+  <h3>Audio Output</h3>
+  <audio controls preload="metadata">
+    <source src="/download/{{ job.id }}" type="audio/mpeg">
+    Your browser does not support audio playback.
+  </audio>
+  <div style="margin-top:0.75rem">
+    <a href="/download/{{ job.id }}" class="btn btn-primary" download>
+      &darr; Download MP3
+    </a>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Share Links</h3>
+
+  {% if active_tokens %}
+  <div style="margin-bottom:1.5rem">
+    {% for tok in active_tokens %}
+    <div class="token-row">
+      <span class="token-url">{{ request.base_url }}s/{{ tok.token }}</span>
+      <span class="meta">
+        {% if tok.expires_at %}
+          Expires {{ tok.expires_at.strftime('%b %d, %Y') }}
+        {% else %}
+          No expiry
+        {% endif %}
+      </span>
+      <form action="/share/{{ job.id }}/revoke" method="post">
+        <input type="hidden" name="token_id" value="{{ tok.id }}">
+        <button type="submit" class="btn btn-danger" style="padding:0.3rem 0.75rem; font-size:0.7rem">
+          Revoke
+        </button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <form action="/share/{{ job.id }}" method="post" style="display:flex; gap:1rem; align-items:flex-end; flex-wrap:wrap">
+    <div class="form-group" style="margin-bottom:0; flex:1; min-width:180px">
+      <label for="expires_days">Expiry (days, 0 = never)</label>
+      <input type="number" id="expires_days" name="expires_days" value="7" min="0" max="365" style="width:100%">
+    </div>
+    <button type="submit" class="btn btn-ghost">Create Share Link</button>
+  </form>
+</div>
+{% endif %}
+
+{% if job.chunks %}
+<div class="card">
+  <h3>Chunks ({{ job.chunks | length }})</h3>
+  <div style="overflow-x:auto">
+    <table style="width:100%; border-collapse:collapse; font-family:var(--font-mono); font-size:0.75rem">
+      <thead>
+        <tr style="border-bottom:1px solid var(--border); color:var(--text-muted)">
+          <th style="text-align:left; padding:0.5rem">#</th>
+          <th style="text-align:left; padding:0.5rem">Status</th>
+          <th style="text-align:left; padding:0.5rem">Length</th>
+          <th style="text-align:left; padding:0.5rem">Error</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for chunk in job.chunks %}
+        <tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:0.5rem; color:var(--text-muted)">{{ chunk.chunk_index }}</td>
+          <td style="padding:0.5rem">
+            <span class="status-badge status-{{ chunk.status.value }}">{{ chunk.status.value }}</span>
+          </td>
+          <td style="padding:0.5rem; color:var(--text-muted)">{{ chunk.text | length }} chars</td>
+          <td style="padding:0.5rem; color:var(--danger)">{{ chunk.error_message or '' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<div class="card">
+  <h3>Original Text</h3>
+  <div style="max-height:200px; overflow-y:auto; font-size:0.9rem; color:var(--text-muted); line-height:1.8; white-space:pre-wrap">{{ job.original_text[:2000] }}{% if job.original_text | length > 2000 %}&hellip;{% endif %}</div>
+</div>
+{% endblock %}
