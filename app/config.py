@@ -46,6 +46,10 @@ class Settings:
     WEBHOOK_RETRY_BACKOFF: str = os.getenv("WEBHOOK_RETRY_BACKOFF", "5,15,45")
 
     # Channels
+    # Coqui Inference Service
+    COQUI_INFERENCE_URL: str = os.getenv("COQUI_INFERENCE_URL", "http://127.0.0.1:8002")
+    INTERNAL_API_SECRET: str = os.getenv("INTERNAL_API_SECRET", "")
+
     TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
     TELEGRAM_CHANNEL_ID: str = os.getenv("TELEGRAM_CHANNEL_ID", "")
     WHATSAPP_PROVIDER: str = os.getenv("WHATSAPP_PROVIDER", "meta")
@@ -60,6 +64,5 @@ class Settings:
     YOUTUBE_OAUTH_TOKEN: str = os.getenv("YOUTUBE_OAUTH_TOKEN", "")
     RSS_BASE_DOMAIN: str = os.getenv("RSS_BASE_DOMAIN", "tts.voxtn.com")
 
-    INTERNAL_API_SECRET: str = os.getenv("INTERNAL_API_SECRET", "")
     CLERK_WEBHOOK_SECRET: str = os.getenv("CLERK_WEBHOOK_SECRET", "")
 settings = Settings()

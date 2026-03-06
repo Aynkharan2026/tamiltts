@@ -16,7 +16,7 @@ from app.worker.celery_app import celery_app
 from app.database import SessionLocal
 from app.models import Job, JobChunk, JobStatus, ChunkStatus, VoiceMode
 from app.worker.chunker import make_chunks
-from app.worker.tts import synthesize_chunk
+from app.worker.tts import synthesize_chunk, synthesize_chunk_coqui
 from app.worker.audio import stitch_chunks
 from app.config import settings
 from app.services.unicode_sanitizer import sanitize
@@ -275,14 +275,27 @@ def process_tts_job(self, job_id: str):
 
             chunk_output = os.path.join(job_dir, f"chunk_{chunk.chunk_index:04d}.mp3")
             try:
-                audio_bytes = synthesize_chunk(
-                    text=chunk.text,
-                    voice_name=resolved_voice,
-                    rate_str=rate_str,
-                    pitch_str=pitch_str,
-                    volume_str=volume_str,
-                    max_retries=2,
-                )
+                # ââ Provider dispatch (Phase 9) ââââââââââââââââ
+                if provider == 'coqui':
+                    audio_bytes = synthesize_chunk_coqui(
+                        text=chunk.text,
+                        voice_model_path=str(getattr(job, 'voice_model_id', '')),
+                        language=getattr(job, 'dialect', 'ta') or 'ta',
+                        pitch=pitch_pct,
+                        rate=1.0 + (rate_pct / 100),
+                        volume=1.0 + (volume_pct / 100),
+                        coqui_inference_url=settings.COQUI_INFERENCE_URL,
+                        internal_secret=settings.INTERNAL_API_SECRET,
+                    )
+                else:
+                    audio_bytes = synthesize_chunk(
+                        text=chunk.text,
+                        voice_name=resolved_voice,
+                        rate_str=rate_str,
+                        pitch_str=pitch_str,
+                        volume_str=volume_str,
+                        max_retries=2,
+                    )
                 with open(chunk_output, "wb") as f:
                     f.write(audio_bytes)
 
@@ -473,6 +486,21 @@ def _resolve_tts_provider(job, db) -> dict:
         if consent.vm_status != "active":
             raise PermissionError("VOICE_MODEL_DISABLED")
 
+        # -- Coqui check (Phase 9) -- runs before ElevenLabs --------------
+        from app.config import settings as _s
+        import urllib.request as _ur
+        def _coqui_healthy():
+            try:
+                with _ur.urlopen(
+                    f"{_s.COQUI_INFERENCE_URL}/health", timeout=2
+                ) as r: return r.status == 200
+            except Exception: return False
+        if _coqui_healthy():
+            return {
+                "provider":    "coqui",
+                "el_voice_id": None,
+            }
+        # -- ElevenLabs (fallback if Coqui unreachable) --------------------
         if consent.tamil_supported and consent.elevenlabs_voice_id:
             # Check monthly char cap
             if consent.chars_used_this_month >= consent.monthly_char_limit:

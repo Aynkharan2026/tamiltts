@@ -7,6 +7,17 @@ celery_app = Celery(
     backend=settings.CELERY_RESULT_BACKEND,
 )
 
+from kombu import Queue
+
+celery_app.conf.task_queues = (
+    Queue('celery'),       # default queue
+    Queue('coqui_queue'),  # isolated queue for Coqui CPU inference
+)
+celery_app.conf.task_default_queue = 'celery'
+celery_app.conf.task_routes = {
+    'app.worker.tasks.process_tts_job': {'queue': 'celery'},
+}
+
 celery_app.conf.update(
     task_serializer="json",
     accept_content=["json"],

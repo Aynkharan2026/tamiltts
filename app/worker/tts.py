@@ -151,3 +151,94 @@ def synthesize_chunk(
     raise RuntimeError(
         f"TTS synthesis failed after {max_retries} attempts: {last_exc}"
     )
+
+
+# ── Coqui provider routing ────────────────────────────────────────────────────
+import urllib.request
+import json as _json
+import base64 as _base64
+
+
+def _coqui_service_healthy(url: str) -> bool:
+    """
+    Health-check the Coqui inference service.
+    2-second timeout. Returns False on any error — falls through to ElevenLabs.
+    """
+    try:
+        req = urllib.request.Request(
+            f"{url}/health",
+            headers={"Accept": "application/json"},
+        )
+        with urllib.request.urlopen(req, timeout=2) as resp:
+            return resp.status == 200
+    except Exception:
+        return False
+
+
+def resolve_tts_provider(voice_model_id: str | None, coqui_inference_url: str) -> str:
+    """
+    Determine which TTS provider to use for a job.
+
+    Priority chain (Phase 9 — CPU dev mode):
+      1. coqui   — if voice_model_id set AND coqui service healthy
+      2. edge_tts — fallback (ElevenLabs path handled separately in tasks.py)
+
+    Returns: "coqui" | "edge_tts"
+    """
+    if voice_model_id and _coqui_service_healthy(coqui_inference_url):
+        logger.info(f"resolve_tts_provider → coqui (voice_model_id={voice_model_id})")
+        return "coqui"
+    if voice_model_id:
+        logger.warning(
+            "resolve_tts_provider — coqui service unreachable, falling back to edge_tts"
+        )
+    return "edge_tts"
+
+
+def synthesize_chunk_coqui(
+    text: str,
+    voice_model_path: str,
+    language: str = "ta",
+    pitch: int = 0,
+    rate: float = 1.0,
+    volume: float = 1.0,
+    coqui_inference_url: str = "http://127.0.0.1:8002",
+    internal_secret: str = "",
+) -> bytes:
+    """
+    Call the tamiltts-coqui-service /infer endpoint.
+    Returns raw MP3 bytes.
+    Raises RuntimeError on failure — caller falls back to edge_tts.
+    """
+    payload = _json.dumps({
+        "voice_model_path": voice_model_path,
+        "text": text,
+        "language": language,
+        "params": {
+            "pitch": pitch,
+            "rate": rate,
+            "volume": volume,
+        },
+    }).encode()
+
+    req = urllib.request.Request(
+        f"{coqui_inference_url}/infer",
+        data=payload,
+        headers={
+            "Content-Type": "application/json",
+            "X-Internal-Secret": internal_secret,
+        },
+        method="POST",
+    )
+
+    try:
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            body = _json.loads(resp.read())
+            mp3_bytes = _base64.b64decode(body["audio_b64"])
+            logger.info(
+                f"synthesize_chunk_coqui OK — duration_ms={body.get('duration_ms')} "
+                f"engine={body.get('engine')}"
+            )
+            return mp3_bytes
+    except Exception as e:
+        raise RuntimeError(f"Coqui inference failed: {e}") from e
