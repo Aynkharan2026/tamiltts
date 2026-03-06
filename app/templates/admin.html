@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — TamilTTS Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Source+Code+Pro:wght@400;600&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0c0c0e; --surface: #141416; --surface2: #1c1c1f;
+      --border: #2a2a2f; --accent: #e8b04b; --accent2: #c94f2c;
+      --text: #e8e4dc; --text-muted: #7a7670; --text-dim: #4a4845;
+      --success: #4caf7d; --danger: #e05252; --warning: #e8b04b;
+      --radius: 4px;
+      --font-display: "Playfair Display", Georgia, serif;
+      --font-body: "Lora", Georgia, serif;
+      --font-mono: "Source Code Pro", monospace;
+      --sidebar: 220px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: var(--font-body); font-size: 14px; line-height: 1.6; min-height: 100vh; display: flex; flex-direction: column; }
+
+    /* ── Topbar ── */
+    .topbar {
+      height: 56px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 1.5rem; position: sticky; top: 0; z-index: 200;
+      background: rgba(12,12,14,0.97); backdrop-filter: blur(8px);
+    }
+    .topbar-logo { font-family: var(--font-display); font-weight: 900; font-size: 1.1rem; color: var(--accent); text-decoration: none; }
+    .topbar-logo span { color: var(--text-muted); font-weight: 400; }
+    .topbar-badge { font-family: var(--font-mono); font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase; background: rgba(224,82,82,0.15); color: var(--danger); border: 1px solid rgba(224,82,82,0.3); padding: 0.2rem 0.5rem; border-radius: 2px; margin-left: 0.75rem; }
+    .topbar-right { display: flex; align-items: center; gap: 1rem; font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-muted); }
+    .topbar-right a { color: var(--text-muted); text-decoration: none; }
+    .topbar-right a:hover { color: var(--accent); }
+
+    /* ── Layout ── */
+    .layout { display: flex; flex: 1; }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: var(--sidebar); flex-shrink: 0;
+      border-right: 1px solid var(--border);
+      padding: 1.5rem 0; position: sticky; top: 56px;
+      height: calc(100vh - 56px); overflow-y: auto;
+    }
+    .sidebar-section { margin-bottom: 1.5rem; }
+    .sidebar-label {
+      font-family: var(--font-mono); font-size: 0.6rem; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--text-dim);
+      padding: 0 1.25rem; margin-bottom: 0.4rem;
+    }
+    .sidebar a {
+      display: flex; align-items: center; gap: 0.6rem;
+      padding: 0.5rem 1.25rem; color: var(--text-muted);
+      text-decoration: none; font-family: var(--font-mono);
+      font-size: 0.75rem; letter-spacing: 0.04em;
+      transition: all 0.15s; border-left: 2px solid transparent;
+    }
+    .sidebar a:hover { color: var(--text); background: var(--surface); }
+    .sidebar a.active { color: var(--accent); border-left-color: var(--accent); background: rgba(232,176,75,0.05); }
+
+    /* ── Main Content ── */
+    .content { flex: 1; padding: 2rem; overflow-x: hidden; max-width: calc(100vw - var(--sidebar)); }
+
+    /* ── Tab Panels ── */
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── Page Header ── */
+    .page-header { margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border); }
+    .page-header h1 { font-family: var(--font-display); font-size: 1.6rem; font-weight: 700; }
+    .page-header p { color: var(--text-muted); font-size: 0.85rem; margin-top: 0.3rem; }
+
+    /* ── Metric Cards ── */
+    .metric-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .metric-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.25rem; }
+    .metric-label { font-family: var(--font-mono); font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.4rem; }
+    .metric-value { font-family: var(--font-mono); font-size: 1.6rem; font-weight: 600; color: var(--accent); }
+    .metric-sub { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem; }
+
+    /* ── Cards ── */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1rem; }
+    .card-title { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 1rem; }
+
+    /* ── Tables ── */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    th { font-family: var(--font-mono); font-size: 0.65rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
+    td { padding: 0.65rem 0.75rem; border-bottom: 1px solid rgba(42,42,47,0.5); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--surface2); }
+
+    /* ── Badges ── */
+    .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 2px; font-family: var(--font-mono); font-size: 0.65rem; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; }
+    .badge-green  { background: rgba(76,175,125,0.15); color: var(--success); }
+    .badge-red    { background: rgba(224,82,82,0.15);  color: var(--danger); }
+    .badge-yellow { background: rgba(232,176,75,0.15); color: var(--accent); }
+    .badge-gray   { background: #2a2a2f; color: var(--text-muted); }
+
+    /* ── Buttons ── */
+    .btn { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.9rem; border-radius: var(--radius); font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer; border: none; text-decoration: none; transition: all 0.15s; font-weight: 600; }
+    .btn-primary { background: var(--accent); color: #0c0c0e; }
+    .btn-primary:hover { background: #f0bc5a; }
+    .btn-danger  { background: transparent; border: 1px solid var(--danger); color: var(--danger); }
+    .btn-danger:hover  { background: var(--danger); color: white; }
+    .btn-ghost   { background: transparent; border: 1px solid var(--border); color: var(--text-muted); }
+    .btn-ghost:hover   { border-color: var(--text-muted); color: var(--text); }
+    .btn-success { background: transparent; border: 1px solid var(--success); color: var(--success); }
+    .btn-success:hover { background: var(--success); color: #0c0c0e; }
+    .btn-sm { padding: 0.25rem 0.6rem; font-size: 0.65rem; }
+
+    /* ── Toggle Switch ── */
+    .toggle-wrap { display: flex; align-items: center; gap: 0.75rem; }
+    .toggle { position: relative; display: inline-block; width: 40px; height: 22px; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider { position: absolute; cursor: pointer; inset: 0; background: var(--border); border-radius: 22px; transition: 0.2s; }
+    .toggle-slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background: var(--text-muted); border-radius: 50%; transition: 0.2s; }
+    .toggle input:checked + .toggle-slider { background: var(--accent); }
+    .toggle input:checked + .toggle-slider:before { transform: translateX(18px); background: #0c0c0e; }
+
+    /* ── Search / Filter ── */
+    .toolbar { display: flex; gap: 0.75rem; margin-bottom: 1rem; align-items: center; flex-wrap: wrap; }
+    .search-input { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 0.45rem 0.75rem; border-radius: var(--radius); font-family: var(--font-mono); font-size: 0.75rem; outline: none; width: 240px; }
+    .search-input:focus { border-color: var(--accent); }
+    select.filter-select { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 0.45rem 0.75rem; border-radius: var(--radius); font-family: var(--font-mono); font-size: 0.75rem; outline: none; }
+
+    /* ── Toast ── */
+    #toast { position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 9999; display: flex; flex-direction: column; gap: 0.5rem; }
+    .toast-msg { background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 0.65rem 1rem; border-radius: var(--radius); font-family: var(--font-mono); font-size: 0.75rem; animation: slideIn 0.2s ease; max-width: 320px; }
+    .toast-msg.ok  { border-color: var(--success); color: var(--success); }
+    .toast-msg.err { border-color: var(--danger);  color: var(--danger); }
+    @keyframes slideIn { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+    /* ── Misc ── */
+    .mono { font-family: var(--font-mono); font-size: 0.75rem; }
+    .muted { color: var(--text-muted); }
+    .danger { color: var(--danger); }
+    .success { color: var(--success); }
+    .section-gap { margin-top: 1.5rem; }
+    .inline-form { display: inline; }
+  </style>
+</head>
+<body>
+
+<!-- Topbar -->
+<div class="topbar">
+  <div style="display:flex;align-items:center;">
+    <a href="/dashboard" class="topbar-logo">Tamil<span>TTS</span> Studio</a>
+    <span class="topbar-badge">Admin</span>
+  </div>
+  <div class="topbar-right">
+    <span>{{ user.email }}</span>
+    <a href="/dashboard">← App</a>
+    <form action="/logout" method="post" style="display:inline">
+      <button type="submit" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-family:var(--font-mono);font-size:0.75rem;">Logout</button>
+    </form>
+  </div>
+</div>
+
+<div class="layout">
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Overview</div>
+      <a href="#" class="active" onclick="showTab('dashboard',this)">⬡ Dashboard</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Users</div>
+      <a href="#" onclick="showTab('users',this)">◎ All Users</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Voice & Consent</div>
+      <a href="#" onclick="showTab('voices',this)">◈ Voice Models</a>
+      <a href="#" onclick="showTab('consents',this)">◉ Consents</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Billing</div>
+      <a href="#" onclick="showTab('plans',this)">◇ Plans</a>
+      <a href="#" onclick="showTab('coupons',this)">◆ Coupons</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">System</div>
+      <a href="#" onclick="showTab('system',this)">⚙ Config</a>
+    </div>
+  </nav>
+
+  <!-- Content -->
+  <div class="content">
+
+    <!-- ══ DASHBOARD ══ -->
+    <div id="tab-dashboard" class="tab-panel active">
+      <div class="page-header">
+        <h1>Dashboard</h1>
+        <p>Live system status and usage metrics</p>
+      </div>
+
+      <div class="metric-grid" id="metric-grid">
+        <div class="metric-card"><div class="metric-label">Total Users</div><div class="metric-value" id="m-users">—</div></div>
+        <div class="metric-card"><div class="metric-label">Concurrency</div><div class="metric-value" id="m-concurrency">—</div><div class="metric-sub" id="m-concurrency-sub"></div></div>
+        <div class="metric-card"><div class="metric-label">EL Chars (30d)</div><div class="metric-value" id="m-el-chars">—</div></div>
+        <div class="metric-card"><div class="metric-label">Abuse Flags</div><div class="metric-value" id="m-abuse">—</div></div>
+        <div class="metric-card"><div class="metric-label">Avg Job Duration</div><div class="metric-value" id="m-duration">—</div><div class="metric-sub">seconds</div></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+        <div class="card">
+          <div class="card-title">System Config</div>
+          <div id="sys-config-summary"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Plan Distribution</div>
+          <div id="plan-dist"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Jobs — Last 7 Days</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Date</th><th>Total</th><th>Done</th><th>Failed</th></tr></thead>
+            <tbody id="jobs-daily"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ USERS ══ -->
+    <div id="tab-users" class="tab-panel">
+      <div class="page-header">
+        <h1>Users</h1>
+        <p>Manage accounts, plans and access</p>
+      </div>
+      <div class="toolbar">
+        <input class="search-input" id="user-search" placeholder="Search email or ID…" oninput="filterUsers()">
+        <button class="btn btn-ghost btn-sm" onclick="loadUsers()">↺ Refresh</button>
+      </div>
+      <div class="card" style="padding:0;">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Email</th><th>Plan</th><th>Status</th>
+                <th>Admin</th><th>Joined</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="users-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- User detail panel -->
+      <div id="user-detail" style="display:none;" class="card section-gap">
+        <div class="card-title" id="ud-title">User Detail</div>
+        <div id="ud-body"></div>
+      </div>
+    </div>
+
+    <!-- ══ VOICES ══ -->
+    <div id="tab-voices" class="tab-panel">
+      <div class="page-header">
+        <h1>Voice Models</h1>
+        <p>All cloned voice models across users</p>
+      </div>
+      <div class="toolbar">
+        <button class="btn btn-ghost btn-sm" onclick="loadVoices()">↺ Refresh</button>
+      </div>
+      <div class="card" style="padding:0;">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Name</th><th>Owner</th><th>Status</th><th>Tamil</th><th>EL ID</th><th>Created</th><th>Actions</th></tr>
+            </thead>
+            <tbody id="voices-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ CONSENTS ══ -->
+    <div id="tab-consents" class="tab-panel">
+      <div class="page-header">
+        <h1>Consent Authorizations</h1>
+        <p>Voice use consent records and audit logs</p>
+      </div>
+      <div class="toolbar">
+        <select class="filter-select" id="consent-filter" onchange="loadConsents()">
+          <option value="">All statuses</option>
+          <option value="pending">Pending</option>
+          <option value="approved">Approved</option>
+          <option value="revoked">Revoked</option>
+          <option value="expired">Expired</option>
+        </select>
+        <button class="btn btn-ghost btn-sm" onclick="loadConsents()">↺ Refresh</button>
+      </div>
+      <div class="card" style="padding:0;">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Voice</th><th>Requester</th><th>Owner</th><th>Status</th><th>Granted</th><th>Actions</th></tr>
+            </thead>
+            <tbody id="consents-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PLANS ══ -->
+    <div id="tab-plans" class="tab-panel">
+      <div class="page-header">
+        <h1>Subscription Plans</h1>
+        <p>Feature flags and pricing per tier</p>
+      </div>
+      <div id="plans-grid"></div>
+    </div>
+
+    <!-- ══ COUPONS ══ -->
+    <div id="tab-coupons" class="tab-panel">
+      <div class="page-header">
+        <h1>Coupons</h1>
+        <p>Discount codes and redemptions</p>
+      </div>
+      <div class="toolbar">
+        <button class="btn btn-primary btn-sm" onclick="showCreateCoupon()">+ New Coupon</button>
+        <button class="btn btn-ghost btn-sm" onclick="loadCoupons()">↺ Refresh</button>
+      </div>
+      <div id="coupon-create" style="display:none;" class="card section-gap">
+        <div class="card-title">Create Coupon</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
+          <div><label style="font-family:var(--font-mono);font-size:0.65rem;color:var(--text-muted);display:block;margin-bottom:0.3rem;">CODE</label>
+            <input class="search-input" id="cc-code" placeholder="BETA2026" style="width:100%"></div>
+          <div><label style="font-family:var(--font-mono);font-size:0.65rem;color:var(--text-muted);display:block;margin-bottom:0.3rem;">TYPE</label>
+            <select class="filter-select" id="cc-type" style="width:100%"><option value="percent">Percent</option><option value="fixed">Fixed</option></select></div>
+          <div><label style="font-family:var(--font-mono);font-size:0.65rem;color:var(--text-muted);display:block;margin-bottom:0.3rem;">VALUE</label>
+            <input class="search-input" id="cc-value" type="number" placeholder="20" style="width:100%"></div>
+          <div><label style="font-family:var(--font-mono);font-size:0.65rem;color:var(--text-muted);display:block;margin-bottom:0.3rem;">MAX REDEMPTIONS</label>
+            <input class="search-input" id="cc-max" type="number" placeholder="100" style="width:100%"></div>
+        </div>
+        <div style="margin-top:0.75rem;">
+          <button class="btn btn-primary btn-sm" onclick="createCoupon()">Create</button>
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('coupon-create').style.display='none'">Cancel</button>
+        </div>
+      </div>
+      <div class="card" style="padding:0;">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Code</th><th>Type</th><th>Value</th><th>Redemptions</th><th>Active</th><th>Actions</th></tr></thead>
+            <tbody id="coupons-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ SYSTEM ══ -->
+    <div id="tab-system" class="tab-panel">
+      <div class="page-header">
+        <h1>System Config</h1>
+        <p>Global toggles and operational controls</p>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+        <div class="card">
+          <div class="card-title">Maintenance Mode</div>
+          <p class="muted" style="font-size:0.82rem;margin-bottom:1rem;">Blocks all new job creation. Existing jobs continue.</p>
+          <div class="toggle-wrap">
+            <label class="toggle"><input type="checkbox" id="tog-maintenance" onchange="setConfig('maintenance_mode', this.checked ? 'true' : 'false')"><span class="toggle-slider"></span></label>
+            <span class="mono" id="tog-maintenance-label">—</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">ElevenLabs Kill Switch</div>
+          <p class="muted" style="font-size:0.82rem;margin-bottom:1rem;">Disables all voice cloning and ElevenLabs generation.</p>
+          <div class="toggle-wrap">
+            <label class="toggle"><input type="checkbox" id="tog-elevenlabs" onchange="setConfig('elevenlabs_enabled', this.checked ? 'true' : 'false')"><span class="toggle-slider"></span></label>
+            <span class="mono" id="tog-elevenlabs-label">—</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Concurrency Cap</div>
+          <p class="muted" style="font-size:0.82rem;margin-bottom:1rem;">Max active task weight. Restart worker after change.</p>
+          <div style="display:flex;gap:0.5rem;align-items:center;">
+            <input class="search-input" id="concurrency-val" type="number" style="width:80px;">
+            <button class="btn btn-primary btn-sm" onclick="setConfig('concurrency_cap', document.getElementById('concurrency-val').value)">Save</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Beta Registrations</div>
+          <p class="muted" style="font-size:0.82rem;margin-bottom:1rem;">Allow new beta signups.</p>
+          <div class="toggle-wrap">
+            <label class="toggle"><input type="checkbox" id="tog-beta" onchange="setConfig('beta_registrations', this.checked ? 'true' : 'false')"><span class="toggle-slider"></span></label>
+            <span class="mono" id="tog-beta-label">—</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /layout -->
+
+<div id="toast"></div>
+
+<script>
+const ADMIN = "{{ admin_secret }}";
+
+// ── Utilities ──────────────────────────────────────────────────────
+function toast(msg, type="ok") {
+  const el = document.createElement("div");
+  el.className = `toast-msg ${type}`;
+  el.textContent = msg;
+  document.getElementById("toast").appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+async function api(method, path, body=null) {
+  const opts = { method, headers: { "X-Admin-Secret": ADMIN, "Content-Type": "application/json" } };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch("/api/admin" + path, opts);
+  if (!r.ok) { const e = await r.json().catch(()=>({})); throw new Error(e.detail || r.statusText); }
+  return r.json();
+}
+
+function fmtDate(s) { if (!s) return "—"; return new Date(s).toLocaleDateString("en-CA"); }
+function fmtDateTime(s) { if (!s) return "—"; return new Date(s).toLocaleString("en-CA"); }
+function planBadge(p) {
+  const cls = {free:"badge-gray", beta:"badge-yellow", premium:"badge-green", agency:"badge-green"};
+  return `<span class="badge ${cls[p]||"badge-gray"}">${p||"free"}</span>`;
+}
+
+// ── Tab Navigation ─────────────────────────────────────────────────
+const loaders = { dashboard: loadDashboard, users: loadUsers, voices: loadVoices, consents: loadConsents, plans: loadPlans, coupons: loadCoupons, system: loadSystem };
+
+function showTab(name, el) {
+  document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+  document.querySelectorAll(".sidebar a").forEach(a => a.classList.remove("active"));
+  document.getElementById("tab-" + name).classList.add("active");
+  if (el) el.classList.add("active");
+  if (loaders[name]) loaders[name]();
+  return false;
+}
+
+// ── Dashboard ──────────────────────────────────────────────────────
+async function loadDashboard() {
+  try {
+    const d = await api("GET", "/metrics");
+    document.getElementById("m-users").textContent = d.total_users;
+    document.getElementById("m-concurrency").textContent = d.concurrency.active_weight + "/" + d.concurrency.max_weight;
+    document.getElementById("m-concurrency-sub").textContent = d.concurrency.available + " available";
+    document.getElementById("m-el-chars").textContent = (d.elevenlabs.total_chars_30d||0).toLocaleString();
+    document.getElementById("m-abuse").textContent = d.abuse_flags_active;
+    document.getElementById("m-duration").textContent = d.avg_duration_secs ?? "—";
+
+    const cfg = d.system_config;
+    document.getElementById("sys-config-summary").innerHTML = `
+      <div style="display:flex;flex-direction:column;gap:0.5rem;">
+        <div style="display:flex;justify-content:space-between;" class="mono">
+          <span class="muted">Maintenance</span>
+          <span class="${cfg.maintenance_mode==="true"?"danger":"success"}">${cfg.maintenance_mode}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;" class="mono">
+          <span class="muted">ElevenLabs</span>
+          <span class="${cfg.elevenlabs_enabled==="true"?"success":"danger"}">${cfg.elevenlabs_enabled}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;" class="mono">
+          <span class="muted">Concurrency Cap</span>
+          <span>${cfg.concurrency_cap}</span>
+        </div>
+      </div>`;
+
+    const dist = d.plan_distribution;
+    document.getElementById("plan-dist").innerHTML = dist.length ? dist.map(p =>
+      `<div style="display:flex;justify-content:space-between;margin-bottom:0.4rem;" class="mono">
+        <span>${planBadge(p.name)}</span><span>${p.user_count} users</span></div>`
+    ).join("") : `<p class="muted mono" style="font-size:0.75rem;">No subscriptions yet</p>`;
+
+    const tbody = document.getElementById("jobs-daily");
+    tbody.innerHTML = d.jobs_daily.length ? d.jobs_daily.map(r =>
+      `<tr><td class="mono">${r.day}</td><td>${r.total}</td>
+       <td class="success">${r.done}</td><td class="danger">${r.failed}</td></tr>`
+    ).join("") : `<tr><td colspan="4" class="muted mono" style="text-align:center;padding:1rem;">No jobs in last 7 days</td></tr>`;
+  } catch(e) { toast(e.message, "err"); }
+}
+
+// ── Users ──────────────────────────────────────────────────────────
+let allUsers = [];
+
+async function loadUsers() {
+  try {
+    allUsers = await api("GET", "/users");
+    renderUsers(allUsers);
+  } catch(e) { toast(e.message, "err"); }
+}
+
+function filterUsers() {
+  const q = document.getElementById("user-search").value.toLowerCase();
+  renderUsers(allUsers.filter(u => u.email.toLowerCase().includes(q) || u.id.includes(q)));
+}
+
+function renderUsers(users) {
+  document.getElementById("users-tbody").innerHTML = users.map(u => `
+    <tr>
+      <td><span class="mono" style="font-size:0.75rem;">${u.email}</span></td>
+      <td>${planBadge(u.plan_name)}</td>
+      <td>
+        ${u.is_suspended ? '<span class="badge badge-red">Suspended</span>' : u.is_active ? '<span class="badge badge-green">Active</span>' : '<span class="badge badge-gray">Inactive</span>'}
+      </td>
+      <td>${u.is_admin ? '<span class="badge badge-yellow">Admin</span>' : ''}</td>
+      <td class="mono muted" style="font-size:0.72rem;">${fmtDate(u.created_at)}</td>
+      <td style="display:flex;gap:0.4rem;flex-wrap:wrap;">
+        <button class="btn btn-ghost btn-sm" onclick="loadUserDetail('${u.id}', '${u.email}')">Detail</button>
+        ${u.is_suspended
+          ? `<button class="btn btn-success btn-sm" onclick="unsuspendUser('${u.id}')">Unsuspend</button>`
+          : `<button class="btn btn-danger btn-sm" onclick="suspendUser('${u.id}')">Suspend</button>`}
+      </td>
+    </tr>`).join("");
+}
+
+async function loadUserDetail(uid, email) {
+  try {
+    const [user, ents, usage] = await Promise.all([
+      api("GET", `/users/${uid}`),
+      api("GET", `/users/${uid}/entitlements`),
+      api("GET", `/users/${uid}/usage`),
+    ]);
+    document.getElementById("ud-title").textContent = email;
+    document.getElementById("ud-body").innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+        <div>
+          <div class="card-title" style="margin-bottom:0.75rem;">Account</div>
+          <div class="mono muted" style="display:flex;flex-direction:column;gap:0.4rem;font-size:0.75rem;">
+            <div><span style="color:var(--text-dim)">ID</span> ${user.id}</div>
+            <div><span style="color:var(--text-dim)">Plan</span> ${planBadge(user.plan_name)}</div>
+            <div><span style="color:var(--text-dim)">Suspended</span> ${user.is_suspended ? '<span class="danger">Yes — '+user.suspend_reason+'</span>' : 'No'}</div>
+            <div><span style="color:var(--text-dim)">Stripe</span> ${user.stripe_customer_id||"—"}</div>
+          </div>
+          <div style="margin-top:1rem;display:flex;gap:0.5rem;flex-wrap:wrap;">
+            <select class="filter-select" id="plan-select-${uid}" style="font-size:0.7rem;">
+              <option value="free">Free</option>
+              <option value="beta">Beta</option>
+              <option value="premium">Premium</option>
+              <option value="agency">Agency</option>
+            </select>
+            <button class="btn btn-primary btn-sm" onclick="assignPlan('${uid}')">Assign Plan</button>
+            <button class="btn btn-danger btn-sm" onclick="revokePlan('${uid}')">→ Free</button>
+          </div>
+        </div>
+        <div>
+          <div class="card-title" style="margin-bottom:0.75rem;">Entitlements</div>
+          <div class="mono" style="font-size:0.72rem;display:flex;flex-direction:column;gap:0.3rem;">
+            ${Object.entries(ents.flags).map(([k,v]) =>
+              `<div style="display:flex;justify-content:space-between;">
+                <span class="muted">${k}</span>
+                <span class="${v===true?"success":v===false?"danger":""}">${JSON.stringify(v)}</span>
+              </div>`).join("")}
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:1rem;">
+        <div class="card-title" style="margin-bottom:0.5rem;">Usage (last window)</div>
+        ${usage.length ? `
+          <div class="mono" style="font-size:0.72rem;display:grid;grid-template-columns:repeat(4,1fr);gap:0.5rem;">
+            <div><div class="muted">TTS Chars</div><div>${usage[0].chars_tts_total||0}</div></div>
+            <div><div class="muted">EL Chars</div><div>${usage[0].chars_elevenlabs||0}</div></div>
+            <div><div class="muted">Jobs</div><div>${usage[0].jobs_created||0}</div></div>
+            <div><div class="muted">EL Jobs</div><div>${usage[0].jobs_elevenlabs||0}</div></div>
+          </div>` : `<p class="muted mono" style="font-size:0.75rem;">No usage records</p>`}
+      </div>`;
+    document.getElementById("user-detail").style.display = "block";
+    document.getElementById("user-detail").scrollIntoView({behavior:"smooth"});
+  } catch(e) { toast(e.message, "err"); }
+}
+
+async function assignPlan(uid) {
+  const plan = document.getElementById(`plan-select-${uid}`).value;
+  try { await api("POST", `/users/${uid}/assign-plan`, {plan_name: plan}); toast(`Plan → ${plan}`); loadUsers(); }
+  catch(e) { toast(e.message, "err"); }
+}
+
+async function revokePlan(uid) {
+  try { await api("POST", `/users/${uid}/revoke-plan`); toast("Reverted to free"); loadUsers(); }
+  catch(e) { toast(e.message, "err"); }
+}
+
+async function suspendUser(uid) {
+  const reason = prompt("Suspend reason (optional):");
+  if (reason === null) return;
+  try { await api("POST", `/users/${uid}/suspend`, {reason}); toast("User suspended"); loadUsers(); }
+  catch(e) { toast(e.message, "err"); }
+}
+
+async function unsuspendUser(uid) {
+  try { await api("POST", `/users/${uid}/unsuspend`); toast("User unsuspended"); loadUsers(); }
+  catch(e) { toast(e.message, "err"); }
+}
+
+// ── Voices ─────────────────────────────────────────────────────────
+async function loadVoices() {
+  try {
+    const voices = await api("GET", "/voices");
+    document.getElementById("voices-tbody").innerHTML = voices.length ? voices.map(v => `
+      <tr>
+        <td class="mono" style="font-size:0.75rem;">${v.display_name}</td>
+        <td class="mono muted" style="font-size:0.72rem;">${v.owner_email}</td>
+        <td><span class="badge ${v.status==="active"?"badge-green":"badge-red"}">${v.status}</span></td>
+        <td>${v.tamil_supported ? '<span class="badge badge-green">Yes</span>' : '<span class="badge badge-gray">No</span>'}</td>
+        <td class="mono muted" style="font-size:0.65rem;">${v.elevenlabs_voice_id ? v.elevenlabs_voice_id.substring(0,12)+"…" : "—"}</td>
+        <td class="mono muted" style="font-size:0.72rem;">${fmtDate(v.created_at)}</td>
+        <td style="display:flex;gap:0.4rem;">
+          ${v.status==="active"
+            ? `<button class="btn btn-danger btn-sm" onclick="disableVoice('${v.id}')">Disable</button>`
+            : `<button class="btn btn-success btn-sm" onclick="enableVoice('${v.id}')">Enable</button>`}
+        </td>
+      </tr>`).join("") : `<tr><td colspan="7" class="muted mono" style="text-align:center;padding:1rem;">No voice models</td></tr>`;
+  } catch(e) { toast(e.message, "err"); }
+}
+
+async function disableVoice(id) {
+  try { await api("POST", `/voices/${id}/disable`); toast("Voice disabled"); loadVoices(); }
+  catch(e) { toast(e.message, "err"); }
+}
+
+async function enableVoice(id) {
+  try { await api("POST", `/voices/${id}/enable`); toast("Voice enabled"); loadVoices(); }
+  catch(e) { toast(e.message, "err"); }
+}
+
+// ── Consents ───────────────────────────────────────────────────────
+async function loadConsents() {
+  try {
+    const filter = document.getElementById("consent-filter").value;
+    const path = filter ? `/consents?status_filter=${filter}` : "/consents";
+    const consents = await api("GET", path);
+    document.getElementById("consents-tbody").innerHTML = consents.length ? consents.map(c => `
+      <tr>
+        <td class="mono" style="font-size:0.75rem;">${c.voice_name}</td>
+        <td class="mono muted" style="font-size:0.72rem;">${c.requester_email}</td>
+        <td class="mono muted" style="font-size:0.72rem;">${c.owner_email||"—"}</td>
+        <td><span class="badge ${c.status==="approved"?"badge-green":c.status==="pending"?"badge-yellow":c.status==="revoked"?"badge-red":"badge-gray"}">${c.status}</span></td>
+        <td class="mono muted" style="font-size:0.72rem;">${fmtDate(c.granted_at)}</td>
+        <td style="display:flex;gap:0.4rem;">
+          ${c.status==="approved" ? `<button class="btn btn-danger btn-sm" onclick="forceRevoke('${c.id}')">Revoke</button>` : ""}
+          <button class="btn btn-ghost btn-sm" onclick="viewAuditLog('${c.id}')">Log</button>
+        </td>
+      </tr>`).join("") : `<tr><td colspan="6" class="muted mono" style="text-align:center;padding:1rem;">No consents found</td></tr>`;
+  } catch(e) { toast(e.message, "err"); }
+}
+
+async function forceRevoke(id) {
+  if (!confirm("Force revoke this consent?")) return;
+  try { await api("POST", `/consents/${id}/force-revoke`); toast("Consent revoked"); loadConsents(); }
+  catch(e) { toast(e.message, "err"); }
+}
+
+async function viewAuditLog(id) {
+  try {
+    const d = await api("GET", `/consents/${id}/audit-log`);
+    alert(JSON.stringify(d.audit_log, null, 2));
+  } catch(e) { toast(e.message, "err"); }
+}
+
+// ── Plans ──────────────────────────────────────────────────────────
+async function loadPlans() {
+  try {
+    const plans = await api("GET", "/plans");
+    document.getElementById("plans-grid").innerHTML = plans.map(p => `
+      <div class="card" style="margin-bottom:0.75rem;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
+          <span style="font-family:var(--font-display);font-size:1.1rem;">${p.display_name}</span>
+          <div style="display:flex;gap:0.5rem;align-items:center;">
+            ${p.is_beta ? '<span class="badge badge-yellow">Beta</span>' : ""}
+            ${p.is_active ? '<span class="badge badge-green">Active</span>' : '<span class="badge badge-gray">Inactive</span>'}
+            <span class="mono muted" style="font-size:0.72rem;">$${p.monthly_price_cad}/mo</span>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:0.4rem;">
+          ${Object.entries(p.feature_flags).map(([k,v]) =>
+            `<div class="mono" style="font-size:0.7rem;display:flex;justify-content:space-between;background:var(--surface2);padding:0.3rem 0.5rem;border-radius:2px;">
+              <span class="muted">${k}</span>
+              <span class="${v===true?"success":v===false?"danger":""}">${JSON.stringify(v)}</span>
+            </div>`).join("")}
+        </div>
+        ${p.beta_expires_at ? `<div class="mono muted" style="font-size:0.7rem;margin-top:0.5rem;">Expires: ${fmtDate(p.beta_expires_at)} · Max users: ${p.beta_max_users||"∞"}</div>` : ""}
+      </div>`).join("");
+  } catch(e) { toast(e.message, "err"); }
+}
+
+// ── Coupons ────────────────────────────────────────────────────────
+async function loadCoupons() {
+  try {
+    const coupons = await api("GET", "/coupons");
+    document.getElementById("coupons-tbody").innerHTML = coupons.length ? coupons.map(c => `
+      <tr>
+        <td class="mono" style="font-size:0.8rem;font-weight:600;">${c.code}</td>
+        <td class="mono muted" style="font-size:0.72rem;">${c.discount_type}</td>
+        <td class="mono" style="font-size:0.75rem;">${c.discount_value}${c.discount_type==="percent"?"%":""}</td>
+        <td class="mono">${c.redemption_count||0}${c.max_redemptions ? " / "+c.max_redemptions : ""}</td>
+        <td>${c.is_active ? '<span class="badge badge-green">Yes</span>' : '<span class="badge badge-gray">No</span>'}</td>
+        <td>${c.is_active ? `<button class="btn btn-danger btn-sm" onclick="deactivateCoupon('${c.code}')">Deactivate</button>` : ""}</td>
+      </tr>`).join("") : `<tr><td colspan="6" class="muted mono" style="text-align:center;padding:1rem;">No coupons</td></tr>`;
+  } catch(e) { toast(e.message, "err"); }
+}
+
+function showCreateCoupon() { document.getElementById("coupon-create").style.display = "block"; }
+
+async function createCoupon() {
+  const body = {
+    code: document.getElementById("cc-code").value,
+    discount_type: document.getElementById("cc-type").value,
+    discount_value: parseFloat(document.getElementById("cc-value").value),
+    max_redemptions: parseInt(document.getElementById("cc-max").value)||null,
+  };
+  try { await api("POST", "/coupons", body); toast("Coupon created"); loadCoupons(); document.getElementById("coupon-create").style.display="none"; }
+  catch(e) { toast(e.message, "err"); }
+}
+
+async function deactivateCoupon(code) {
+  if (!confirm(`Deactivate coupon ${code}?`)) return;
+  try { await api("DELETE", `/coupons/${code}`); toast("Coupon deactivated"); loadCoupons(); }
+  catch(e) { toast(e.message, "err"); }
+}
+
+// ── System ─────────────────────────────────────────────────────────
+async function loadSystem() {
+  try {
+    const cfg = await api("GET", "/system/config");
+    const get = k => cfg.find(c => c.key === k)?.value;
+    const mm = get("maintenance_mode") === "true";
+    const el = get("elevenlabs_enabled") === "true";
+    const br = get("beta_registrations") === "true";
+    const cc = get("concurrency_cap") || "2";
+    document.getElementById("tog-maintenance").checked = mm;
+    document.getElementById("tog-maintenance-label").textContent = mm ? "ENABLED" : "disabled";
+    document.getElementById("tog-maintenance-label").className = "mono " + (mm ? "danger" : "success");
+    document.getElementById("tog-elevenlabs").checked = el;
+    document.getElementById("tog-elevenlabs-label").textContent = el ? "enabled" : "DISABLED";
+    document.getElementById("tog-elevenlabs-label").className = "mono " + (el ? "success" : "danger");
+    document.getElementById("tog-beta").checked = br;
+    document.getElementById("tog-beta-label").textContent = br ? "open" : "closed";
+    document.getElementById("concurrency-val").value = cc;
+  } catch(e) { toast(e.message, "err"); }
+}
+
+async function setConfig(key, value) {
+  try {
+    await api("POST", `/system/config/${key}`, {value: String(value)});
+    toast(`${key} → ${value}`);
+    loadSystem();
+    if (key === "maintenance_mode" || key === "elevenlabs_enabled") loadDashboard();
+  } catch(e) { toast(e.message, "err"); }
+}
+
+// ── Init ───────────────────────────────────────────────────────────
+loadDashboard();
+</script>
+</body>
+</html>

@@ -49,4 +49,35 @@ def get_current_user(request: Request, db: Session) -> User:
             status_code=status.HTTP_303_SEE_OTHER,
             headers={"Location": "/login"},
         )
+    # Suspended users are blocked with 403 (not redirected — clear message)
+    if getattr(user, "is_suspended", False):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account suspended. Contact support@voxtn.com.",
+        )
     return user
+
+
+def get_admin_user(request: Request, db: Session) -> User:
+    """Require authenticated user with is_admin=True. Used by all admin routes."""
+    user = get_current_user(request, db)
+    if not user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required.",
+        )
+    return user
+
+
+# ── CSRF double-submit protection ──────────────────────────────────────────
+import secrets as _secrets
+
+def generate_csrf_token() -> str:
+    return _secrets.token_hex(32)
+
+def validate_csrf(request: "Request", form_token: str) -> None:
+    from fastapi import HTTPException
+    cookie_token = request.cookies.get("csrf_token", "")
+    if not cookie_token or not form_token or cookie_token != form_token:
+        raise HTTPException(status_code=403, detail="Invalid CSRF token")
+

@@ -19,3 +19,10 @@ celery_app.conf.update(
 )
 
 celery_app.autodiscover_tasks(["app.worker"])
+
+celery_app.conf.beat_schedule = {
+    "retry-pending-webhooks": {
+        "task": "app.worker.tasks.retry_pending_webhooks",
+        "schedule": 300.0,  # every 5 minutes
+    },
+}

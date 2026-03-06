@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Job, JobStatus, ShareToken, User
-from app.auth import get_current_user
+from app.auth import get_current_user, validate_csrf
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -25,8 +25,10 @@ async def create_share(
     job_id: str,
     request: Request,
     expires_days: int = Form(0),  # 0 = no expiry
+    csrf_token: str = Form(...),
     db: Session = Depends(get_db),
 ):
+    validate_csrf(request, csrf_token)
     try:
         user = _get_user(request, db)
     except HTTPException:
@@ -58,8 +60,10 @@ async def revoke_share(
     job_id: str,
     request: Request,
     token_id: str = Form(...),
+    csrf_token: str = Form(...),
     db: Session = Depends(get_db),
 ):
+    validate_csrf(request, csrf_token)
     try:
         user = _get_user(request, db)
     except HTTPException:

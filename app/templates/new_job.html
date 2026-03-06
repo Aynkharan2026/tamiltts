@@ -1,88 +1,291 @@
 {% extends "base.html" %}
 {% block title %}New Job — TamilTTS Studio{% endblock %}
-
 {% block content %}
+
+<style>
+  .preset-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 0.6rem;
+    margin-bottom: 0.5rem;
+  }
+  .preset-option input[type="radio"] { display: none; }
+  .preset-option label {
+    display: block;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    position: relative;
+  }
+  .preset-option input:checked + label {
+    border-color: var(--accent);
+    background: rgba(232,176,75,0.07);
+    color: var(--text);
+  }
+  .preset-option label:hover { border-color: var(--text-dim); color: var(--text); }
+  .preset-name {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    display: block;
+    margin-bottom: 0.2rem;
+  }
+  .preset-locked {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .preset-locked label { cursor: not-allowed; }
+  .lock-icon {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    font-size: 0.65rem;
+    color: var(--text-dim);
+  }
+  .tier-divider {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin: 1rem 0 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .tier-divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+  .voice-selector {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+  .voice-sel-group label {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 0.4rem;
+    display: block;
+  }
+  select.voice-select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 0.6rem 0.75rem;
+    border-radius: var(--radius);
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  select.voice-select:focus { border-color: var(--accent); }
+  .speed-range { width: 100%; accent-color: var(--accent); }
+  .preset-params {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    margin-top: 0.3rem;
+  }
+    .preset-params { display: none !important; }
+  .range-wrapper { display: flex; align-items: center; gap: 1rem; }
+  .range-value { font-family: var(--font-mono); font-size: 0.85rem; color: var(--accent); min-width: 3rem; }
+  </style>
+
 <div class="page-header">
-  <h1>New Job</h1>
-  <p>Paste Tamil text (with any embedded English) to synthesize speech</p>
+  <h1>புதிய ஒலி வேலை</h1>
+  <p>தமிழ் உரையை ஒலியாக மாற்றுங்கள். குரல், பாணி மற்றும் வேகம் தேர்வு செய்யுங்கள்.</p>
 </div>
 
 {% if error is defined and error %}
-<div class="alert alert-error">{{ error }}</div>
+  <div class="alert alert-error">{{ error }}</div>
 {% endif %}
 
 <form action="/jobs" method="post" enctype="multipart/form-data">
+  <input type="hidden" name="csrf_token" id="csrf_token_input">
 
+  <!-- Text input -->
   <div class="card">
-    <h3>Job Details</h3>
+    <h3>Content</h3>
     <div class="form-group">
       <label for="title">Title (optional)</label>
-      <input type="text" id="title" name="title" placeholder="e.g. Tamil Essay Chapter 1">
+      <input type="text" id="title" name="title"
+        placeholder="e.g. Tamil Essay Chapter 1">
     </div>
     <div class="form-group">
       <label for="text">Tamil Text</label>
-      <textarea id="text" name="text" placeholder="இங்கே உங்கள் தமிழ் கட்டுரையை ஒட்டுங்கள்...&#10;You can include English words like this too."></textarea>
-      <div class="meta" style="margin-top:0.4rem">Max 100,000 characters · Supports Tamil + English</div>
+      <textarea id="text" name="text"
+        placeholder="இங்கே உங்கள் தமிழ் கட்டுரையை ஒட்டுங்கள்...&#10;You can include English words too."></textarea>
+      <div class="meta" style="margin-top:0.4rem">
+        Max 100,000 characters · Supports Tamil + English
+        · <span id="char-count">0</span> characters
+      </div>
     </div>
     <div class="form-group" style="margin-bottom:0">
       <label for="file">Or upload a file (.txt or .docx)</label>
       <input type="file" id="file" name="file" accept=".txt,.docx"
-        style="background:var(--surface2); border:1px solid var(--border); color:var(--text-muted); padding:0.5rem; border-radius:var(--radius); width:100%">
+        style="background:var(--surface2); border:1px solid var(--border);
+               color:var(--text-muted); padding:0.5rem; border-radius:var(--radius); width:100%">
     </div>
   </div>
 
+  <!-- Voice selection -->
   <div class="card">
-    <h3>Voice Mode</h3>
-    <div class="voice-grid">
-      <div class="voice-option">
-        <input type="radio" id="vm_mn" name="voice_mode" value="male_newsreader" checked>
-        <label for="vm_mn">
-          <span class="voice-label-title">Male · Newsreader</span>
-          Formal, neutral tone. Best for essays and articles.
-        </label>
+    <h3>Voice</h3>
+    <div class="voice-selector">
+      <div class="voice-sel-group">
+        <label>Dialect / Region</label>
+        <select name="dialect" id="dialect" class="voice-select" onchange="updateVoicePreview()">
+          <option value="ta-LK">🇱🇰 Sri Lanka</option>
+          <option value="ta-IN">🇮🇳 India</option>
+          <option value="ta-MY">🇲🇾 Malaysia</option>
+          <option value="ta-SG">🇸🇬 Singapore</option>
+        </select>
       </div>
-      <div class="voice-option">
-        <input type="radio" id="vm_mc" name="voice_mode" value="male_conversational">
-        <label for="vm_mc">
-          <span class="voice-label-title">Male · Conversational</span>
-          Natural, slightly relaxed delivery.
-        </label>
-      </div>
-      <div class="voice-option">
-        <input type="radio" id="vm_fn" name="voice_mode" value="female_newsreader">
-        <label for="vm_fn">
-          <span class="voice-label-title">Female · Newsreader</span>
-          Clear, professional female voice.
-        </label>
-      </div>
-      <div class="voice-option">
-        <input type="radio" id="vm_fc" name="voice_mode" value="female_conversational">
-        <label for="vm_fc">
-          <span class="voice-label-title">Female · Conversational</span>
-          Warm, approachable delivery.
-        </label>
+      <div class="voice-sel-group">
+        <label>Gender</label>
+        <select name="gender" id="gender" class="voice-select" onchange="updateVoicePreview()">
+          <option value="female">Female</option>
+          <option value="male">Male</option>
+        </select>
       </div>
     </div>
-    <div class="meta" style="margin-top:1rem; padding:0.75rem; background:var(--surface2); border-radius:var(--radius)">
-      &#9432; Newsreader style uses Google WaveNet voices (higher quality). Conversational uses Standard voices.
-      True stylistic differentiation is approximated — Google TTS does not offer separate newsreader/conversational modes for ta-IN.
+    <div class="meta" id="voice-preview" style="padding:0.5rem 0.75rem;
+      background:var(--surface2); border-radius:var(--radius); margin-bottom:0;">
+      Voice: <strong id="voice-name-display">ta-LK-SaranyaNeural</strong>
     </div>
+    <!-- Hidden field — populated by JS -->
+    <input type="hidden" name="voice_mode" id="voice_mode_hidden" value="ta-LK-SaranyaNeural">
   </div>
 
+  <!-- Preset selection -->
+  <div class="card">
+    <h3>Style Preset</h3>
+
+    {% set free_presets = presets | selectattr("tier_required", "equalto", "free") | list %}
+    {% set premium_presets = presets | selectattr("tier_required", "equalto", "premium") | list %}
+
+    {% if free_presets %}
+    <div class="tier-divider">Free</div>
+    <div class="preset-grid">
+      {% for p in free_presets %}
+      <div class="preset-option">
+        <input type="radio" id="preset_{{ p.preset_key }}" name="preset_id"
+          value="{{ p.preset_key }}"
+          {% if p.preset_key == "conversational" %}checked{% endif %}>
+        <label for="preset_{{ p.preset_key }}"
+          onclick="updatePresetParams({{ p.pitch_percent }}, {{ p.rate_percent }}, {{ p.volume_percent }})">
+          <span class="preset-name">{{ p.emoji or "" }} {{ p.display_name }}</span>
+          <span class="preset-params" id="pp_{{ p.preset_key }}">
+            {% if p.pitch_percent != 0 %}pitch {{ "+" if p.pitch_percent > 0 }}{{ p.pitch_percent }}%{% endif %}
+            {% if p.rate_percent != 0 %} · rate {{ "+" if p.rate_percent > 0 }}{{ p.rate_percent }}%{% endif %}
+          </span>
+        </label>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if premium_presets %}
+    <div class="tier-divider">Premium</div>
+    <div class="preset-grid">
+      {% for p in premium_presets %}
+      {% set is_locked = not (user_plan is defined and user_plan in ["premium","beta","agency"]) %}
+      <div class="preset-option {% if is_locked %}preset-locked{% endif %}">
+        <input type="radio" id="preset_{{ p.preset_key }}" name="preset_id"
+          value="{{ p.preset_key }}"
+          {% if is_locked %}disabled{% endif %}>
+        <label for="preset_{{ p.preset_key }}">
+          {% if is_locked %}<span class="lock-icon">🔒</span>{% endif %}
+          <span class="preset-name">{{ p.emoji or "" }} {{ p.display_name }}</span>
+          <span class="preset-params">
+            {% if p.pitch_percent != 0 %}pitch {{ "+" if p.pitch_percent > 0 }}{{ p.pitch_percent }}%{% endif %}
+            {% if p.rate_percent != 0 %} · rate {{ "+" if p.rate_percent > 0 }}{{ p.rate_percent }}%{% endif %}
+          </span>
+        </label>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if not presets %}
+    <p class="meta">No presets available.</p>
+    {% endif %}
+  </div>
+
+  <!-- Speed control -->
   <div class="card">
     <h3>Speed</h3>
     <div class="range-wrapper">
-      <span class="meta">0.9&times;</span>
-      <input type="range" id="speed" name="speed"
-        min="0.9" max="1.1" step="0.05" value="1.0"
-        oninput="document.getElementById('speed-val').textContent = parseFloat(this.value).toFixed(2) + '&times;'">
-      <span class="meta">1.1&times;</span>
-      <span class="range-value" id="speed-val">1.00&times;</span>
+      <span class="meta">0.75×</span>
+      <input type="range" id="speed" name="speed" class="speed-range"
+        min="0.75" max="1.5" step="0.05" value="1.0"
+        oninput="document.getElementById('speed-val').textContent =
+          parseFloat(this.value).toFixed(2) + '×'">
+      <span class="meta">1.5×</span>
+      <span class="range-value" id="speed-val">1.00×</span>
+    </div>
+    <div class="meta" style="margin-top:0.5rem">
+      Speed combines with preset rate adjustment.
+      Preset rate shown above each style.
     </div>
   </div>
 
-  <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center; padding:0.9rem">
-    Generate Audio &rarr;
+  <button type="submit" class="btn btn-primary"
+    style="width:100%; justify-content:center; padding:0.9rem">
+    Generate Audio →
   </button>
+
 </form>
+
+<script>
+const VOICE_MATRIX = {
+  "ta-LK": { female: "ta-LK-SaranyaNeural",  male: "ta-LK-KumarNeural"    },
+  "ta-IN": { female: "ta-IN-PallaviNeural",   male: "ta-IN-ValluvarNeural" },
+  "ta-MY": { female: "ta-MY-KaniNeural",      male: "ta-MY-SuryaNeural"    },
+  "ta-SG": { female: "ta-SG-VenbaNeural",     male: "ta-SG-AnbuNeural"     },
+};
+
+function updateVoicePreview() {
+  const dialect = document.getElementById("dialect").value;
+  const gender  = document.getElementById("gender").value;
+  const voice   = (VOICE_MATRIX[dialect] || VOICE_MATRIX["ta-LK"])[gender] || "ta-LK-SaranyaNeural";
+  document.getElementById("voice-name-display").textContent = voice;
+  document.getElementById("voice_mode_hidden").value = voice;
+}
+
+function updatePresetParams(pitch, rate, volume) {
+  // Visual feedback only — actual computation in backend
+  const speed = parseFloat(document.getElementById("speed").value);
+  const effectiveRate = Math.round((speed - 1.0) * 100) + rate;
+  document.getElementById("preset-effective-rate").textContent =
+    (effectiveRate >= 0 ? "+" : "") + effectiveRate + "%";
+}
+
+// Character counter
+document.getElementById("text").addEventListener("input", function() {
+  document.getElementById("char-count").textContent =
+    this.value.length.toLocaleString();
+});
+
+// Init
+updateVoicePreview();
+<!-- Effective rate display -->
+<div id="preset-effective-rate" style="display:none"></div>
+</script>
 {% endblock %}

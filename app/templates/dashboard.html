@@ -5,7 +5,7 @@
 <div class="page-header">
   <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem">
     <div>
-      <h1>Your Jobs</h1>
+      <h1>உங்கள் வேலைகள்</h1>
       <p>All text-to-speech conversions</p>
     </div>
     <a href="/new" class="btn btn-primary">+ New Job</a>
@@ -15,7 +15,7 @@
 {% if not jobs %}
 <div class="card" style="text-align:center; padding:3rem">
   <p style="color:var(--text-muted); font-size:1.1rem">No jobs yet.</p>
-  <a href="/new" class="btn btn-primary" style="margin-top:1.5rem">Create your first job →</a>
+  <a href="/new" class="btn btn-primary" style="margin-top:1.5rem">Create your first job</a>
 </div>
 {% else %}
 <div class="card" style="padding:0; overflow:hidden">
@@ -24,9 +24,9 @@
     <div style="flex:1; min-width:0">
       <div class="job-title">{{ job.title or "Untitled" }}</div>
       <div class="meta" style="margin-top:0.25rem">
-        {{ job.voice_mode.value.replace('_', ' ').title() }} &middot;
+        {{ job.voice_mode.replace("_", " ").title() }} &middot;
         {{ job.speed }}x &middot;
-        {{ job.created_at.strftime('%b %d, %Y %H:%M') }}
+        {{ job.created_at.strftime("%b %d, %Y %H:%M") }}
       </div>
     </div>
     <div style="display:flex; align-items:center; gap:0.75rem; flex-shrink:0">
@@ -36,4 +36,109 @@
   {% endfor %}
 </div>
 {% endif %}
+
+<div class="page-header" style="margin-top:2.5rem">
+  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem">
+    <div>
+      <h2 style="font-size:1.4rem; margin:0">Voice Files</h2>
+      <p style="margin:0.25rem 0 0; color:var(--text-muted); font-size:0.9rem">Clone and manage your voices</p>
+    </div>
+    {% if can_clone %}
+    <button id="show-upload-btn" onclick="document.getElementById('voice-upload-panel').style.display='block';this.style.display='none'" class="btn btn-primary">+ Add Voice</button>
+    {% else %}
+    <span style="font-size:0.82rem;color:var(--text-muted);background:var(--surface2);padding:0.4rem 0.8rem;border-radius:4px">Premium Feature</span>
+    {% endif %}
+  </div>
+</div>
+
+{% if can_clone %}
+<div id="voice-upload-panel" style="display:none" class="card">
+  <h3 style="margin:0 0 1rem; font-size:1rem">Upload Voice Sample</h3>
+  <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:1rem">Minimum 30 seconds, maximum 5 minutes. WAV or MP3.</p>
+  <div style="margin-bottom:0.75rem">
+    <label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:0.3rem">VOICE NAME</label>
+    <input type="text" id="voice-name" placeholder="e.g. My Voice" style="width:100%;padding:0.6rem 0.8rem;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);color:var(--text)">
+  </div>
+  <div style="margin-bottom:0.75rem">
+    <label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:0.3rem">AUDIO FILE</label>
+    <input type="file" id="voice-file" accept=".wav,.mp3,audio/wav,audio/mpeg" style="width:100%;padding:0.6rem;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);color:var(--text)">
+  </div>
+  <div style="margin-bottom:1rem;padding:0.75rem;background:var(--surface2);border-radius:var(--radius);border-left:3px solid var(--accent)">
+    <label style="display:flex;gap:0.6rem;align-items:flex-start;cursor:pointer;font-size:0.85rem">
+      <input type="checkbox" id="voice-consent" style="margin-top:3px;flex-shrink:0">
+      <span>I confirm this voice sample is mine or I have permission from the voice owner to use it.</span>
+    </label>
+  </div>
+  <div style="display:flex;gap:0.75rem">
+    <button onclick="uploadVoice()" class="btn btn-primary" id="voice-upload-btn">Upload</button>
+    <button onclick="document.getElementById('voice-upload-panel').style.display='none';document.getElementById('show-upload-btn').style.display=''" style="padding:0.5rem 1rem;border:1px solid var(--border);border-radius:var(--radius);background:transparent;cursor:pointer;color:var(--text)">Cancel</button>
+  </div>
+  <div id="voice-upload-status" style="margin-top:0.75rem;font-size:0.85rem"></div>
+</div>
+{% endif %}
+
+{% if user_voices %}
+<div class="card" style="padding:0;overflow:hidden;margin-top:1rem">
+  {% for v in user_voices %}
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:0.9rem 1.25rem;border-bottom:1px solid var(--border)">
+    <div>
+      <div style="font-weight:600;font-size:0.95rem">{{ v.display_name }}</div>
+      <div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.15rem">
+        {{ "Tamil supported" if v.tamil_supported else "Tamil not verified" }} &middot; {{ v.created_at.strftime("%b %d, %Y") }}
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:0.75rem">
+      <span class="status-badge status-{{ v.status }}">{{ v.status }}</span>
+      <button onclick="deleteVoice('{{ v.id }}')" style="padding:0.3rem 0.6rem;font-size:0.78rem;border:1px solid #c0392b;color:#c0392b;background:transparent;border-radius:var(--radius);cursor:pointer">Delete</button>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card" style="text-align:center;padding:2rem;margin-top:1rem">
+  <p style="color:var(--text-muted);font-size:0.95rem">{% if can_clone %}No voices yet. Click Add Voice to get started.{% else %}Voice cloning is a premium feature.{% endif %}</p>
+</div>
+{% endif %}
+
+<script>
+async function uploadVoice() {
+  const name = document.getElementById("voice-name").value.trim();
+  const file = document.getElementById("voice-file").files[0];
+  const consent = document.getElementById("voice-consent").checked;
+  const status = document.getElementById("voice-upload-status");
+  const btn = document.getElementById("voice-upload-btn");
+  if (!name) { status.innerHTML = "<span style='color:#c0392b'>Voice name required.</span>"; return; }
+  if (!file) { status.innerHTML = "<span style='color:#c0392b'>Please select a file.</span>"; return; }
+  if (!consent) { status.innerHTML = "<span style='color:#c0392b'>Consent required.</span>"; return; }
+  btn.disabled = true;
+  btn.textContent = "Uploading...";
+  status.innerHTML = "<span style='color:#2980b9'>Processing voice... this may take a minute.</span>";
+  const fd = new FormData();
+  fd.append("display_name", name);
+  fd.append("file", file);
+  const csrfMatch = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/);
+  if (csrfMatch) fd.append("csrf_token", decodeURIComponent(csrfMatch[1]));
+  try {
+    const res = await fetch("/api/voices/upload", { method: "POST", body: fd });
+    const data = await res.json();
+    if (res.ok) {
+      status.innerHTML = "<span style='color:green'>Voice added successfully. Reloading...</span>";
+      setTimeout(() => location.reload(), 1500);
+    } else {
+      status.innerHTML = "<span style='color:#c0392b'>Error: " + (data.detail || "Unknown error") + "</span>";
+      btn.disabled = false; btn.textContent = "Upload";
+    }
+  } catch(e) {
+    status.innerHTML = "<span style='color:#c0392b'>Connection error. Please try again.</span>";
+    btn.disabled = false; btn.textContent = "Upload";
+  }
+}
+async function deleteVoice(id) {
+  if (!confirm("Delete this voice? This cannot be undone.")) return;
+  const res = await fetch("/api/voices/" + id, { method: "DELETE" });
+  if (res.ok) location.reload();
+  else alert("Error deleting voice.");
+}
+</script>
+
 {% endblock %}

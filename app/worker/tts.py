@@ -1,115 +1,153 @@
-"""
-Google Cloud Text-to-Speech integration.
-
-Mixed-language handling approach:
-- Tamil text often contains English words (product names, technical terms, etc.)
-- We use SSML with <lang xml:lang="en-US"> tags around detected English "islands"
-- The ta-IN voice will attempt to pronounce wrapped English spans using en-US phonology
-- Limitation: Google TTS may not perfectly switch phonology mid-utterance; results
-  vary by voice and content. This is the best available approach without a multilingual voice.
-- English detection: sequences of ASCII letters (A-Z, a-z), possibly with digits,
-  hyphens, apostrophes — but excluding common single-letter Tamil transliterations.
-  Emails and URLs are also wrapped.
-"""
-
-import re
+import asyncio
 import time
 import logging
-from google.cloud import texttospeech
-from app.models import VoiceMode, VOICE_MAP
-from app.config import settings
+import tempfile
+import os
+import edge_tts
+from app.models import VoiceMode
 
 logger = logging.getLogger(__name__)
 
-# Detect English words: 2+ ASCII letters (avoid false positives on single chars)
-ENGLISH_ISLAND_RE = re.compile(
-    r'(?:'
-    r'https?://\S+'                          # URLs
-    r'|[\w.+-]+@[\w-]+\.[a-zA-Z]{2,}'       # Emails
-    r'|[A-Za-z][A-Za-z0-9\'-]*[A-Za-z0-9]' # Words 2+ chars
-    r'|[A-Z]{1}'                             # Single uppercase (abbreviation initials)
-    r')'
-)
+# ── Legacy voice map (kept for backward compatibility with old jobs) ──────────
+VOICE_MAP = {
+    VoiceMode.MALE_NEWSREADER:       "ta-LK-KumarNeural",
+    VoiceMode.MALE_CONVERSATIONAL:   "ta-LK-KumarNeural",
+    VoiceMode.FEMALE_NEWSREADER:     "ta-LK-SaranyaNeural",
+    VoiceMode.FEMALE_CONVERSATIONAL: "ta-LK-SaranyaNeural",
+}
+
+# ── Dialect + gender matrix ───────────────────────────────────────────────────
+VOICE_MATRIX = {
+    "ta-IN": {"male": "ta-IN-ValluvarNeural",  "female": "ta-IN-PallaviNeural"},
+    "ta-MY": {"male": "ta-MY-SuryaNeural",     "female": "ta-MY-KaniNeural"},
+    "ta-LK": {"male": "ta-LK-KumarNeural",     "female": "ta-LK-SaranyaNeural"},
+    "ta-SG": {"male": "ta-SG-AnbuNeural",      "female": "ta-SG-VenbaNeural"},
+}
+DEFAULT_DIALECT = "ta-LK"
+DEFAULT_GENDER  = "female"
 
 
-def _escape_xml(text: str) -> str:
-    return (text
-            .replace("&", "&amp;")
-            .replace("<", "&lt;")
-            .replace(">", "&gt;")
-            .replace('"', "&quot;")
-            .replace("'", "&apos;"))
+def get_voice_name(dialect: str, gender: str) -> str:
+    d = dialect if dialect in VOICE_MATRIX else DEFAULT_DIALECT
+    g = gender  if gender  in ("male", "female") else DEFAULT_GENDER
+    return VOICE_MATRIX[d][g]
 
 
-def build_ssml(text: str) -> str:
+def build_rate_str(speed: float, rate_percent: int = 0) -> str:
     """
-    Build SSML wrapping English spans with <lang xml:lang="en-US">.
+    Combine speed slider (0.75–1.5) with preset rate_percent (-30 to +30).
+    speed=1.0 + rate_percent=0  → "+0%"
+    speed=1.1 + rate_percent=10 → "+20%"
     """
-    result = []
-    last = 0
-    for m in ENGLISH_ISLAND_RE.finditer(text):
-        start, end = m.start(), m.end()
-        # Tamil portion before this English span
-        tamil_part = text[last:start]
-        if tamil_part:
-            result.append(_escape_xml(tamil_part))
-        eng_word = m.group(0)
-        result.append(f'<lang xml:lang="en-US">{_escape_xml(eng_word)}</lang>')
-        last = end
-    # Remaining Tamil text
-    remaining = text[last:]
-    if remaining:
-        result.append(_escape_xml(remaining))
+    speed_contribution = round((speed - 1.0) * 100)
+    total = speed_contribution + rate_percent
+    total = max(-50, min(50, total))
+    return f"+{total}%" if total >= 0 else f"{total}%"
 
-    ssml_body = "".join(result)
-    return f'<speak>{ssml_body}</speak>'
+
+def build_pitch_str(pitch_percent: int = 0) -> str:
+    """
+    Convert pitch_percent (-30 to +30) to Edge-TTS Hz offset string.
+    Edge-TTS pitch is in Hz, roughly 1% ≈ 2Hz for typical Tamil voices.
+    """
+    hz = round(pitch_percent * 2)
+    hz = max(-100, min(100, hz))
+    return f"+{hz}Hz" if hz >= 0 else f"{hz}Hz"
+
+
+def build_volume_str(volume_percent: int = 0) -> str:
+    volume_percent = max(-50, min(50, volume_percent))
+    return f"+{volume_percent}%" if volume_percent >= 0 else f"{volume_percent}%"
+
+
+async def _synthesize_async(
+    text: str, voice: str, rate: str, pitch: str, volume: str, output_path: str
+):
+    communicate = edge_tts.Communicate(
+        text=text, voice=voice, rate=rate, pitch=pitch, volume=volume
+    )
+    await communicate.save(output_path)
 
 
 def synthesize_chunk(
-    text: str,
-    voice_mode: VoiceMode,
-    speed: float,
-    max_retries: int = 2,
+    text:          str,
+    voice_mode:    "VoiceMode | str | None" = None,
+    speed:         float = 1.0,
+    max_retries:   int = 2,
+    # New preset-based params (take priority over voice_mode if provided)
+    voice_name:    str | None = None,
+    rate_str:      str | None = None,
+    pitch_str:     str | None = None,
+    volume_str:    str | None = None,
 ) -> bytes:
     """
-    Synthesize a single text chunk to MP3 bytes.
-    Retries on transient errors.
-    Returns raw MP3 bytes.
-    Raises on persistent failure.
+    Synthesize a text chunk via Edge-TTS.
+
+    Can be called two ways:
+    1. Legacy: synthesize_chunk(text, voice_mode=vm, speed=1.0)
+    2. Preset: synthesize_chunk(text, voice_name="ta-LK-KumarNeural",
+                                rate_str="+5%", pitch_str="+4Hz", volume_str="+0%")
     """
-    client = texttospeech.TextToSpeechClient()
-    voice_name = VOICE_MAP[voice_mode]
-    ssml = build_ssml(text)
+    # ── Resolve voice name ────────────────────────────────────────────────────
+    if not voice_name:
+        if voice_mode is not None:
+            # Legacy path — look up from VOICE_MAP
+            try:
+                vm = VoiceMode(voice_mode) if isinstance(voice_mode, str) else voice_mode
+                voice_name = VOICE_MAP.get(vm, "ta-LK-SaranyaNeural")
+            except ValueError:
+                # voice_mode is a raw Edge-TTS voice name (e.g. "ta-IN-PallaviNeural")
+                voice_name = voice_mode if voice_mode else "ta-LK-SaranyaNeural"
+        else:
+            voice_name = "ta-LK-SaranyaNeural"
 
-    synthesis_input = texttospeech.SynthesisInput(ssml=ssml)
-    voice_params = texttospeech.VoiceSelectionParams(
-        language_code="ta-IN",
-        name=voice_name,
-    )
-    audio_config = texttospeech.AudioConfig(
-        audio_encoding=texttospeech.AudioEncoding.MP3,
-        speaking_rate=max(0.25, min(4.0, speed)),  # GCP limits: 0.25–4.0
-    )
+    # ── Resolve rate/pitch/volume ─────────────────────────────────────────────
+    if not rate_str:
+        is_newsreader = voice_mode in (
+            VoiceMode.MALE_NEWSREADER, VoiceMode.FEMALE_NEWSREADER
+        ) if voice_mode else False
+        base_rate = -5 if is_newsreader else 0
+        rate_str = build_rate_str(speed, base_rate)
 
+    if not pitch_str:
+        pitch_str = "+0Hz"
+
+    if not volume_str:
+        volume_str = "+0%"
+
+    # ── Synthesize with retries ───────────────────────────────────────────────
     last_exc = None
     for attempt in range(1, max_retries + 1):
+        tmp_path = None
         try:
-            response = client.synthesize_speech(
-                input=synthesis_input,
-                voice=voice_params,
-                audio_config=audio_config,
-            )
-            audio = response.audio_content
+            with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
+                tmp_path = tmp.name
+            asyncio.run(_synthesize_async(
+                text, voice_name, rate_str, pitch_str, volume_str, tmp_path
+            ))
+            with open(tmp_path, "rb") as f:
+                audio = f.read()
             if not audio or len(audio) < 100:
-                raise ValueError(f"Empty or suspiciously small audio response ({len(audio)} bytes)")
+                raise ValueError(f"Empty audio response ({len(audio)} bytes)")
+            logger.info(
+                "edge-tts synthesized %d bytes voice=%s rate=%s pitch=%s vol=%s",
+                len(audio), voice_name, rate_str, pitch_str, volume_str,
+            )
             return audio
         except Exception as e:
             last_exc = e
             logger.warning(
-                "TTS synthesis attempt %d/%d failed: %s",
-                attempt, max_retries, str(e)
+                "edge-tts attempt %d/%d failed: %s", attempt, max_retries, str(e)
             )
             if attempt < max_retries:
                 time.sleep(2 ** attempt)
+        finally:
+            if tmp_path and os.path.exists(tmp_path):
+                try:
+                    os.remove(tmp_path)
+                except OSError:
+                    pass
 
-    raise RuntimeError(f"TTS synthesis failed after {max_retries} attempts: {last_exc}")
+    raise RuntimeError(
+        f"TTS synthesis failed after {max_retries} attempts: {last_exc}"
+    )

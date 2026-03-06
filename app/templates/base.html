@@ -8,18 +8,18 @@
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Source+Code+Pro:wght@400;600&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #0c0c0e;
-      --surface: #141416;
-      --surface2: #1c1c1f;
-      --border: #2a2a2f;
-      --accent: #e8b04b;
-      --accent2: #c94f2c;
-      --text: #e8e4dc;
-      --text-muted: #7a7670;
-      --text-dim: #4a4845;
-      --success: #4caf7d;
-      --danger: #e05252;
-      --warning: #e8b04b;
+      --bg: #f5f4f0;
+      --surface: #ffffff;
+      --surface2: #eeecea;
+      --border: #d8d4cc;
+      --accent: #c0392b;
+      --accent2: #922b21;
+      --text: #1a1a1a;
+      --text-muted: #555250;
+      --text-dim: #999490;
+      --success: #1e7e4a;
+      --danger: #c0392b;
+      --warning: #b7770d;
       --radius: 4px;
       --font-display: 'Playfair Display', Georgia, serif;
       --font-body: 'Lora', Georgia, serif;
@@ -35,17 +35,10 @@
       font-size: 15px;
       line-height: 1.7;
       min-height: 100vh;
+      display: flex;
+      flex-direction: column;
     }
 
-    body::before {
-      content: '';
-      position: fixed;
-      inset: 0;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
-      pointer-events: none;
-      z-index: 9999;
-      opacity: 0.4;
-    }
 
     header {
       border-bottom: 1px solid var(--border);
@@ -56,8 +49,9 @@
       height: 64px;
       position: sticky;
       top: 0;
-      background: rgba(12,12,14,0.95);
-      backdrop-filter: blur(8px);
+      background: #ffffff;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      border-bottom: 2px solid var(--accent);
       z-index: 100;
     }
 
@@ -295,16 +289,30 @@
 
     .page-header { margin-bottom: 2.5rem; }
     .page-header p { color: var(--text-muted); margin-top: 0.5rem; }
+
+    .progress-wrap { background: var(--surface2); border: 1px solid var(--border); border-radius: 999px; height: 10px; overflow: hidden; margin: 0.75rem 0; }
+    .progress-bar { height: 100%; background: linear-gradient(90deg, var(--accent) 0%, #e74c3c 100%); border-radius: 999px; transition: width 0.4s ease; min-width: 4px; }
+    .progress-bar.indeterminate { width: 40% !important; animation: progress-pulse 1.4s ease-in-out infinite; }
+    @keyframes progress-pulse { 0% { transform: translateX(-100%); } 100% { transform: translateX(350%); } }
+    .voice-option input:checked + label,
+    .preset-option input:checked + label { border-color: #1a5c8a !important; background: #eaf3fb !important; color: var(--text) !important; box-shadow: 0 0 0 2px rgba(26,92,138,0.18); }
+    footer { border-top: 1px solid var(--border); background: var(--surface); padding: 1.25rem 2rem; text-align: center; font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-dim); letter-spacing: 0.03em; }
+    footer a { color: var(--accent); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+    p { color: #333; }
+    textarea { color: #333; line-height: 1.8; }
+    .job-row:hover { background: #faf8f5; }
   </style>
   {% block extra_head %}{% endblock %}
 </head>
 <body>
   <header>
-    <a href="/dashboard" class="logo">Tamil<span>TTS</span> Studio</a>
+    <a href="/dashboard" class="logo"><img src="/static/images/logo.png" alt="தாய்வீடு TTS Studio" style="height:44px;width:auto;display:block;"></a>
     <nav>
       {% if user is defined and user %}
         <a href="/dashboard">Dashboard</a>
         <a href="/new">New Job</a>
+        {% if user.is_admin %}<a href="/admin">Admin</a>{% endif %}
         <form action="/logout" method="post">
           <button type="submit">Logout</button>
         </form>
@@ -318,5 +326,20 @@
     {% endif %}
     {% endblock %}
   </main>
+  <footer>
+    Powered by <a href="https://www.voxtn.com" target="_blank" rel="noopener">VoxTN</a>
+    &nbsp;&bull;&nbsp;
+    &copy; 2026 All rights reserved.
+  </footer>
+  <script>
+  // CSRF: populate all hidden csrf_token inputs from cookie
+  document.addEventListener("DOMContentLoaded", function() {
+    var match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/);
+    var token = match ? decodeURIComponent(match[1]) : "";
+    document.querySelectorAll("input[name=csrf_token]").forEach(function(el) {
+      el.value = token;
+    });
+  });
+  </script>
 </body>
 </html>

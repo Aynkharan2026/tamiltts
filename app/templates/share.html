@@ -68,7 +68,7 @@
     <p class="eyebrow">Shared Audio</p>
     <h1>{{ job.title or "Tamil Audio" }}</h1>
     <div class="meta">
-      {{ job.voice_mode.value.replace('_', ' ').title() }} &middot; {{ job.speed }}&times; speed
+      {{ job.voice_mode.replace('_', ' ').title() }} &middot; {{ job.speed }}&times; speed
       {% if expires_at %} &middot; Expires {{ expires_at.strftime('%b %d, %Y') }}{% endif %}
     </div>
 
